@@ -17,7 +17,7 @@ import org.opalj.br.ClassFile
 import org.opalj.br.FieldType
 import org.opalj.br.FieldTypes
 import org.opalj.br.MethodDescriptor
-import org.opalj.br.ObjectType
+import org.opalj.br.ClassType
 import org.opalj.br.ReferenceType
 import org.opalj.br.ReturnType
 import org.opalj.br.analyses.Project
@@ -80,7 +80,7 @@ object DoopAdapter extends JavaTestAdapter {
         assert(tgts.nonEmpty)
         val firstTgt = toMethod(tgts.head)
         val tgtReturnType = ReturnType(firstTgt.returnType)
-        val tgtParamTypes: FieldTypes = immutable.ArraySeq(firstTgt.parameterTypes.map(FieldType.apply): _*)
+        val tgtParamTypes: FieldTypes = immutable.ArraySeq(firstTgt.parameterTypes.map(FieldType.apply)*)
         val tgtMD = MethodDescriptor(tgtParamTypes, tgtReturnType)
         val split = declaredTgt.split("""\.""")
         val declaredType = s"L${split.slice(0, split.size - 1).mkString("/")};"
@@ -94,7 +94,7 @@ object DoopAdapter extends JavaTestAdapter {
             case instr: MethodInvocationInstruction if (
                 instr.name == name &&
                     (instr.declaringClass == declObjType ||
-                        declObjType == ObjectType.Object && instr.declaringClass.isArrayType)
+                        declObjType == ClassType.Object && instr.declaringClass.isArrayType)
                 ) ⇒ instr //&& instr.declaringClass == FieldType(declaredType) ⇒ instr // && instr.methodDescriptor == tgtMD ⇒ instr
             case instr: INVOKEDYNAMIC ⇒ instr
                 //throw new Error()
@@ -130,11 +130,11 @@ object DoopAdapter extends JavaTestAdapter {
             val callerMethod = toMethod(caller)
             reachableMethodsSet += callerMethod
             var resultingCallSites = Set.empty[CallSite]
-            project.classFile(toObjectType(callerMethod.declaringClass)) match {
+            project.classFile(toClassType(callerMethod.declaringClass)) match {
                 case Some(cf) ⇒
                     implicit val classFile: ClassFile = cf
                     val returnType = ReturnType(callerMethod.returnType)
-                    val parameterTypes: FieldTypes = scala.collection.compat.immutable.ArraySeq(callerMethod.parameterTypes.map(FieldType.apply): _*)
+                    val parameterTypes: FieldTypes = scala.collection.compat.immutable.ArraySeq(callerMethod.parameterTypes.map(FieldType.apply)*)
                     val md = MethodDescriptor(parameterTypes, returnType)
 
                     cf.findMethod(callerMethod.name, md) match {
@@ -255,9 +255,9 @@ object DoopAdapter extends JavaTestAdapter {
         }
     }
 
-    private def toObjectType(jvmRefType: String): ObjectType = {
+    private def toClassType(jvmRefType: String): ClassType = {
         assert(jvmRefType.length > 2)
-        ObjectType(jvmRefType.substring(1, jvmRefType.length - 1))
+        ClassType(jvmRefType.substring(1, jvmRefType.length - 1))
     }
 
     override def serializeCG(
